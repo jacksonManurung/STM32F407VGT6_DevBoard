@@ -36,7 +36,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -54,13 +53,11 @@ GPIO_Properties_t led_3			= {.port = GPIOD, .pin = GPIO_PIN_14};
 GPIO_Properties_t led_4			= {.port = GPIOD, .pin = GPIO_PIN_15};
 GPIO_Properties_t push_button	= {.port = GPIOA, .pin = GPIO_PIN_0};
 
-//GPIO_Properties_t * leds[]		= {&led_1, &led_2, &led_3, &led_4};
-
-PushButton_Properties_t user_button	= {.status = BUTTON_OFF, .line = &push_button, .callback = NULL};
+PushButton_Properties_t user_button[]	= {{.status = BUTTON_OFF, .orientation = ACTIVE_PULL_DOWN, .line = &push_button, .callback = NULL}};
 LEDIndicator_Properties_t leds[]	= {
-		{.state = LED_BLINK, .orientation = ACTIVE_HIGH, .line = &led_1},
+		{.state = LED_OFF, .orientation = ACTIVE_HIGH, .line = &led_1},
 		{.state = LED_OFF, .orientation = ACTIVE_HIGH, .line = &led_2},
-		{.state = LED_BLINK, .orientation = ACTIVE_HIGH, .line = &led_3},
+		{.state = LED_OFF, .orientation = ACTIVE_HIGH, .line = &led_3},
 		{.state = LED_OFF, .orientation = ACTIVE_HIGH, .line = &led_4}
 };
 /* USER CODE END PV */
@@ -233,7 +230,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -247,35 +243,67 @@ void StartDefaultTask(void *argument) {
 	/* USER CODE BEGIN 5 */
 	/* Infinite loop */
 	while(1) {
+#if 1
+		for(uint16_t index = 0; index < (sizeof(user_button) / sizeof(PushButton_Properties_t)); index++) {
+			if(user_button[index].line != NULL) {
+				if(HAL_GPIO_ReadPin(user_button[index].line->port, user_button[index].line->pin) == (user_button[index].orientation == ACTIVE_PULL_UP) ? GPIO_PIN_SET : GPIO_PIN_RESET) {
+					switch(user_button[index].status) {
+					case BUTTON_OFF : {
+						user_button[index].status		= BUTTON_PUSHED;
+						user_button[index].delay		= HAL_GetTick();
+						break;
+					}
+					case BUTTON_PUSHED : {
+						if((HAL_GetTick() - user_button[index].delay) >= PUSH_BUTTON_DEBOUNCE_DELAY) {
+							user_button[index].status	= BUTTON_LOCK;
+							if(user_button[index].callback != NULL)
+								user_button[index].callback(NULL);
+						}
+						break;
+					}
+					case BUTTON_LOCK :
+					default : {break;}
+					}
+				}
+				else if(HAL_GPIO_ReadPin(user_button[index].line->port, user_button[index].line->pin) == (user_button[index].orientation == ACTIVE_PULL_UP) ? GPIO_PIN_RESET : GPIO_PIN_SET) {
+					if(user_button[index].status != BUTTON_OFF)
+						user_button[index].status		= BUTTON_OFF;
+				}
+			}
+		}
+#endif
+
+#if 1
 		for (uint16_t index = 0; index < (sizeof(leds) / sizeof(LEDIndicator_Properties_t)); index++) {
 			if(leds[index].line != NULL) {
 				switch(leds[index].state) {
-				case LED_ON : {
-					if(HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET)
-						HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET);
-					break;
-				}
-				case LED_BLINK : {
-					if((HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET) && ((HAL_GetTick() - leds[index].delay) >= LED_BLINK_OFF_DELAY)) {
-						leds[index].delay	= HAL_GetTick();
-						HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+					case LED_ON : {
+						if(HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET)
+							HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+						break;
 					}
-					else if((HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET) && ((HAL_GetTick() - leds[index].delay) >= LED_BLINK_ON_DELAY)) {
-						leds[index].delay	= HAL_GetTick();
-						HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+					case LED_BLINK : {
+						if((HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET) && ((HAL_GetTick() - leds[index].delay) >= LED_BLINK_OFF_DELAY)) {
+							leds[index].delay	= HAL_GetTick();
+							HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET);
+						}
+						else if((HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET) && ((HAL_GetTick() - leds[index].delay) >= LED_BLINK_ON_DELAY)) {
+							leds[index].delay	= HAL_GetTick();
+							HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+						}
+						break;
 					}
-					break;
-				}
-				case LED_OFF :
-				default : {
-					if(HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET)
-						HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-					break;
-				}
+					case LED_OFF :
+					default : {
+						if(HAL_GPIO_ReadPin(leds[index].line->port, leds[index].line->pin) == (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_RESET : GPIO_PIN_SET)
+							HAL_GPIO_WritePin(leds[index].line->port, leds[index].line->pin, (leds[index].orientation == ACTIVE_LOW) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+						break;
+					}
 				}
 			}
 			else continue;
 		}
+#endif
 		osDelay(1U);
 	}
 	/* USER CODE END 5 */

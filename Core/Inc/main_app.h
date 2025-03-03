@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
-#define LED_BLINK_ON_DELAY		50U
-#define LED_BLINK_OFF_DELAY		1000U - LED_BLINK_ON_DELAY
+#define LED_BLINK_ON_DELAY			50U
+#define LED_BLINK_OFF_DELAY			1000U - LED_BLINK_ON_DELAY
+
+#define PUSH_BUTTON_DEBOUNCE_DELAY	20U
 
 typedef struct {
 	void * port;
@@ -17,6 +19,10 @@ typedef struct {
 		BUTTON_PUSHED,
 		BUTTON_LOCK
 	}status;
+	enum {
+		ACTIVE_PULL_UP = 0,
+		ACTIVE_PULL_DOWN
+	}orientation;
 	GPIO_Properties_t * line;
 	uint32_t delay;
 	void (*callback)(void * arg);
